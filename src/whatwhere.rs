@@ -52,7 +52,7 @@ impl WhatWhereRecord {
     }
 }
 
-pub fn load_from_csv_to_vec<R>(input: R) -> Result<Vec<WhatWhereRecord>, Box<dyn Error>>
+fn load_from_csv_to_vec<R>(input: R) -> Result<Vec<WhatWhereRecord>, Box<dyn Error>>
 where
     R: io::Read,
 {
@@ -65,7 +65,7 @@ where
     Ok(v)
 }
 
-pub fn save_to_csv_from_vec<'a, W, I>(output: W, iterator: I) -> Result<(), Box<dyn Error>>
+fn save_to_csv_from_vec<'a, W, I>(output: W, iterator: I) -> Result<(), Box<dyn Error>>
 where
     W: io::Write,
     I: Iterator<Item = &'a WhatWhereRecord>,
@@ -77,21 +77,34 @@ where
     Ok(())
 }
 
+pub trait UpdatableDB {
+    fn update(&mut self, what: &str, container: &str, current_update: &str);
+}
+
+pub trait SearchableDB {
+    fn search_by_thing_code(&self, what: &str) -> Option<&str>;
+}
+
+impl UpdatableDB for WhatWhereMemDB {
+    fn update(&mut self, what: &str, container: &str, current_update: &str) {
+        self.db.insert(what.to_string(), ThingProperties::new(container.to_string(), current_update.to_string()));
+    }
+
+}
+
+impl SearchableDB for WhatWhereMemDB {
+    fn search_by_thing_code(&self, what: &str) -> Option<&str> {
+        match self.db.get(what) {
+            Some(tprop) => { Some(&tprop.container) },
+                None => None,
+        }
+    }
+}
+
 impl WhatWhereMemDB {
     pub fn new() -> WhatWhereMemDB {
         WhatWhereMemDB {
             db: BTreeMap::new(),
-        }
-    }
-
-    pub fn update(&mut self, what: &str, container: &str, current_update: &str) {
-        self.db.insert(what.to_string(), ThingProperties::new(container.to_string(), current_update.to_string()));
-    }
-
-    pub fn where_is(&self, what: &str) -> Option<&str> {
-        match self.db.get(what) {
-            Some(tprop) => { Some(&tprop.container) },
-                None => None,
         }
     }
 
@@ -177,8 +190,8 @@ t02,c02,2001-01-01 12:54
         let mut db = WhatWhereMemDB::new();
         let mut buff = io::Cursor::new(CSV00IN);
         db.add_from_csv(buff)?;
-        assert_eq!(db.where_is("t01"), Some("c01"));
-        assert_eq!(db.where_is("t02"), Some("c02"));
+        assert_eq!(db.search_by_thing_code("t01"), Some("c01"));
+        assert_eq!(db.search_by_thing_code("t02"), Some("c02"));
         assert_eq!(db.len(), 2);
         Ok(())
     }

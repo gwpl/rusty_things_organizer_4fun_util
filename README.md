@@ -12,23 +12,7 @@ Assuming:
 * environment variable THINGS_DB with THINGS_DB directory
 
 # search
-things s XXX
-
-# move to container
-$ things m container_code thing_code
-
-# register containers
-$ things c
-container00
-container01
-container02
-...
-
-# move to container multiple items
-$ things m container_code
-thing_code01
-thing_code02
-thing_code03
+things s thing_code01
 
 # batch mode. Empty line indicates start of new sequence.
 # multiple empty lines in a row are allowed.
@@ -47,6 +31,7 @@ item11
 
 container20
 item20
+<Ctrl-D>
 ...
 
 
@@ -58,3 +43,16 @@ $ things lc
 ```
 
 
+In consideration for future if would turn out helpful:
+
+```
+# move to container
+$ things m container_code thing_code
+
+# move to container multiple items
+$ things m container_code
+thing_code01
+thing_code02
+thing_code03
+
+```
