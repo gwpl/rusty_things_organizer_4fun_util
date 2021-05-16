@@ -65,10 +65,8 @@ mod tests {
     use tempfile::NamedTempFile;
 
     #[test]
-    fn test_run_with_csv_file_00() -> Result<(), Box<dyn Error>> {
+    fn batch_mode_with_csv_file_00() -> Result<(), Box<dyn Error>> {
         let mut outbuf = Vec::new();
-        //let mut csvbuff: Vec<u8> = Vec::new();
-        //let mut csvf = io::Cursor::new(&csvbuff);
         let mut csvf_tempfile_base = NamedTempFile::new()?;
         let csv_before = "What,Container,LastUpdate
 a,A,TODO
@@ -116,6 +114,47 @@ Z,z,TODO
             .unwrap()
             .read_to_string(&mut csv_after_result)?;
         assert_eq!(csv_after_result, csv_after_expected);
+        Ok(())
+    }
+
+    #[test]
+    fn search_mode_with_csv_file_00() -> Result<(), Box<dyn Error>> {
+        let mut outbuf = Vec::new();
+        let mut csvf_tempfile_base = NamedTempFile::new()?;
+        let csv_before = "What,Container,LastUpdate
+a,A,TODO
+b,B,TODO
+c,C,TODO
+x,X,TODO
+y,Y,TODO
+z,Z,TODO
+";
+        csvf_tempfile_base
+            .reopen()
+            .unwrap()
+            .write_all(csv_before.as_bytes())?;
+        // Arguments and stdin
+        let args: Vec<String> = ["cmd", "s"].iter().map(|s| s.to_string()).collect();
+        let input = io::Cursor::new(
+            "a
+b
+ItemNotInDB
+y
+
+
+
+z
+",
+        );
+        let mut csv_file = csvf_tempfile_base.reopen()?;
+        run_with_csv_file(&args[..], input, &mut outbuf, &mut csv_file)?;
+        let output_expected = "A
+B
+Error: Not found!
+Y
+Z
+";
+        assert_eq!(String::from_utf8(outbuf)?, output_expected);
         Ok(())
     }
 }

@@ -48,7 +48,7 @@ pub fn parse_and_execute_updates<DB, R, W>(
     args: &[String],
     db: &mut DB,
     input: R,
-    mut output: &W,
+    mut output: &mut W,
 ) -> Result<(), Box<dyn Error>>
 where
     R: io::Read,
@@ -61,7 +61,7 @@ where
     }
     match parse_mode_command(&args[1]) {
         BatchMode => process_batch(&args, db, input, output),
-        SearchMode => process_search(&args, db, input , output),
+        SearchMode => process_search(&args, db, input, output),
         UnknownMode => Err("Unknown command".into()),
     }
 }
@@ -108,16 +108,30 @@ where
 
 #[allow(warnings)]
 fn process_search<SDB, R, W>(
-        _args: &[String],
-        db: &mut SDB,
-        input: R,
-        mut output: &W
+    _args: &[String],
+    db: &mut SDB,
+    input: R,
+    mut output: &mut W,
 ) -> Result<(), Box<dyn Error>>
 where
     R: io::Read,
     W: io::Write,
-    SDB: SearchableDB
+    SDB: SearchableDB,
 {
+    let input = io::BufReader::new(input);
+    for line in input.lines() {
+        let line: String = match line {
+            Ok(string) => string.trim().into(),
+            Err(_) => continue,
+        };
+        if line == "" {
+            continue;
+        };
+        match db.search_by_thing_code(&line) {
+            Some(container) => writeln!(&mut output, "{}", container),
+            None => writeln!(&mut output, "Error: Not found!"),
+        };
+    }
     Ok(())
 }
 
@@ -180,8 +194,9 @@ container3x";
     fn cli_search_mode_test_00() -> Result<(), Box<dyn Error>> {
         let input = "thing01
 thing02
+thingABC
+
 thing03
-thing04
 ";
         //let args: Vec<String> = vec!["rustythings_foo_bar.bin".to_string(), "b".to_string()];
         let args: Vec<String> = ["rustythings_foo_bar.bin", "s"]
@@ -195,11 +210,11 @@ thing04
         memdb.update("thing02", "container02", "TimestampX");
         memdb.update("thing03", "container03", "TimestampX");
         parse_and_execute_updates(&args, &mut memdb, cursor_input, &mut output)?;
-        let output_expected =
-"container01
+        let output_expected = "container01
 container02
+Error: Not found!
 container03
-Error: Not found!";
+";
         assert_eq!(String::from_utf8(output)?, output_expected);
         Ok(())
     }

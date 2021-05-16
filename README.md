@@ -43,7 +43,6 @@ item20
 <Ctrl-D>
 ...
 
-// TO BE PUSHED VERY SOON
 # search (followed by things to search)
 $ things s
 
