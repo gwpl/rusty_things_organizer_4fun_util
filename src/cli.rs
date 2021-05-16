@@ -61,7 +61,7 @@ where
     }
     match parse_mode_command(&args[1]) {
         BatchMode => process_batch(&args, db, input, output),
-        SearchMode => Err("Unsupported command".into()),
+        SearchMode => process_search(&args, db, input , output),
         UnknownMode => Err("Unknown command".into()),
     }
 }
@@ -106,6 +106,21 @@ where
     Ok(())
 }
 
+#[allow(warnings)]
+fn process_search<SDB, R, W>(
+        _args: &[String],
+        db: &mut SDB,
+        input: R,
+        mut output: &W
+) -> Result<(), Box<dyn Error>>
+where
+    R: io::Read,
+    W: io::Write,
+    SDB: SearchableDB
+{
+    Ok(())
+}
+
 #[cfg(test)]
 #[allow(unused_imports)]
 mod cli_tests {
@@ -115,7 +130,7 @@ mod cli_tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn add_things_from_cli() -> Result<(), Box<dyn Error>> {
+    fn cli_batch_mode_test_00() -> Result<(), Box<dyn Error>> {
         let input = "container0x
 thing00
 thing01
@@ -158,6 +173,34 @@ container3x";
         for (container_code, thing_code) in v {
             assert_eq!(memdb.search_by_thing_code(thing_code), Some(container_code));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn cli_search_mode_test_00() -> Result<(), Box<dyn Error>> {
+        let input = "thing01
+thing02
+thing03
+thing04
+";
+        //let args: Vec<String> = vec!["rustythings_foo_bar.bin".to_string(), "b".to_string()];
+        let args: Vec<String> = ["rustythings_foo_bar.bin", "s"]
+            .iter()
+            .map(|x| x.to_string())
+            .collect();
+        let mut memdb = WhatWhereMemDB::new();
+        let mut output: Vec<_> = Vec::new();
+        let cursor_input = io::Cursor::new(input);
+        memdb.update("thing01", "container01", "TimestampX");
+        memdb.update("thing02", "container02", "TimestampX");
+        memdb.update("thing03", "container03", "TimestampX");
+        parse_and_execute_updates(&args, &mut memdb, cursor_input, &mut output)?;
+        let output_expected =
+"container01
+container02
+container03
+Error: Not found!";
+        assert_eq!(String::from_utf8(output)?, output_expected);
         Ok(())
     }
 }
