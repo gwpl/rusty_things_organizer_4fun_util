@@ -1,19 +1,108 @@
 use crate::whatwhere::{SearchableDB, UpdatableDB};
-use std::error::Error;
 use std::io;
+use std::{error::Error, io::BufRead};
 
-#[allow(unused_variables)]
-pub fn parse_and_execute_updates<UDB, R, W>(
+pub enum ModeCommands {
+    BatchMode,
+    SearchMode,
+    //ContentsMode, //TODO
+    UnknownMode,
+}
+
+pub fn display_help(args: &[String]) {
+    let cmd: &str = if args.len() >= 1 { &args[0] } else { "command" };
+    eprintln!(
+        "Usage:
+{0} b # to enter batch mode
+{0} s # to search for things
+
+Batch mode:
+Provide container code folowed by codes of things to assign to it (in separate lines).
+To enter new container, provide one or more empty lines.
+
+Search mode:
+each line specify code of thing to search.
+",
+        cmd
+    );
+}
+
+pub fn parse_mode_command(cmd: &str) -> ModeCommands {
+    use ModeCommands::*;
+    match cmd.as_ref() {
+        "b" => BatchMode,
+        "s" => SearchMode,
+        // "c" => ContentsMode,
+        _ => UnknownMode,
+    }
+    //if cmd == "b" {
+    //    BatchMode
+    //} else if cmd == "s" {
+    //    SearchMode
+    //} else {
+    //    UnknownMode
+    //}
+}
+
+pub fn parse_and_execute_updates<DB, R, W>(
     args: &[String],
-    db: &mut UDB,
+    db: &mut DB,
     input: R,
-    mut output: W,
+    mut output: &W,
 ) -> Result<(), Box<dyn Error>>
 where
     R: io::Read,
     W: io::Write,
-    UDB: UpdatableDB + SearchableDB,
+    DB: UpdatableDB + SearchableDB,
 {
+    use ModeCommands::*;
+    if args.len() < 2 {
+        return Err("No command provided".into());
+    }
+    match parse_mode_command(&args[1]) {
+        BatchMode => process_batch(&args, db, input, output),
+        SearchMode => Err("Unsupported command".into()),
+        UnknownMode => Err("Unknown command".into()),
+    }
+}
+
+fn process_batch<UDB, R, W>(
+    _args: &[String],
+    db: &mut UDB,
+    input: R,
+    mut _output: &W,
+) -> Result<(), Box<dyn Error>>
+where
+    R: io::Read,
+    W: io::Write,
+    UDB: UpdatableDB,
+{
+    let current_update = "TODO"; // timestamp marker of this session
+    let input = io::BufReader::new(input);
+    let mut container = String::new();
+    for line in input.lines() {
+        let line: String = match line {
+            Ok(string) => string,
+            Err(_) => continue,
+        };
+        if line.trim() == "" {
+            eprintln!("Empty line detected. Waiting for new container code.");
+            container = "".into();
+        }
+        if container == "" {
+            //if container != "" {
+            // TODO: contianer contents
+            //    let contents : Vec<String> = db.contents(container);
+            //    eprintln!("Current `{}` container contents : {:?}", container, contents);
+            //}
+            container = line;
+            eprintln!("Waiting for things to assign to container: {:?}", container);
+        } else {
+            let thing = line;
+            eprintln!("Thing `{}` assined to container `{}`", thing, container);
+            db.update(&thing, &container, current_update);
+        }
+    }
     Ok(())
 }
 
@@ -56,6 +145,7 @@ container3x";
             ("container0x", ["thing00", "thing01", "thing02"]),
             ("container1x", ["thing10", "thing11", "thing12"]),
             ("container2x", ["thing20", "", ""]),
+            ("container3x", ["", "", ""]),
         ];
         let v: Vec<_> = i.iter().fold(Vec::<(&str, &str)>::new(), |acc, (a, l)| {
             l.iter().fold(acc, |mut acc2, b| {

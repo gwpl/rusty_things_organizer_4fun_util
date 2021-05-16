@@ -11,8 +11,12 @@ Assuming:
 * alias things=/path/to/binary...
 * environment variable THINGS_DB with THINGS_DB directory
 
-# search
-things s thing_code01
+# search (followed by things to search)
+things s
+thing_code01
+thing_code02
+thing_code03
+...
 
 # batch mode. Empty line indicates start of new sequence.
 # multiple empty lines in a row are allowed.

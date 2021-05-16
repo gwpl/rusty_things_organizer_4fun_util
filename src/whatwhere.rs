@@ -7,15 +7,15 @@ use std::error::Error;
 use std::io;
 use std::vec::Vec;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct WhatWhereRecord {
-    pub what: String,
     pub container: String, // because "where" is reserved keyword and previxing r# may suck
+    pub what: String,
     pub last_update: String, // iso-8601 string
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct ThingProperties {
     pub container: String,
     pub last_update: String,
@@ -31,6 +31,7 @@ impl ThingProperties {
 }
 
 // TODO: make Key a custom type (?)
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct WhatWhereMemDB {
     db: BTreeMap<String, ThingProperties>, // key is what , value is "where" == "container"
 }
@@ -43,11 +44,14 @@ impl WhatWhereRecord {
             last_update: last_update.to_string(),
         }
     }
-    pub fn from_things_properties(what: &str, thing_properties: &ThingProperties) -> WhatWhereRecord {
+    pub fn from_things_properties(
+        what: &str,
+        thing_properties: &ThingProperties,
+    ) -> WhatWhereRecord {
         WhatWhereRecord {
-                what: what.to_string(),
-                container: thing_properties.container.to_string(),
-                last_update: thing_properties.last_update.to_string(),
+            what: what.to_string(),
+            container: thing_properties.container.to_string(),
+            last_update: thing_properties.last_update.to_string(),
         }
     }
 }
@@ -65,7 +69,7 @@ where
     Ok(v)
 }
 
-fn save_to_csv_from_vec<'a, W, I>(output: W, iterator: I) -> Result<(), Box<dyn Error>>
+fn save_to_csv_from_vec<'a, W, I>(output: &mut W, iterator: I) -> Result<(), Box<dyn Error>>
 where
     W: io::Write,
     I: Iterator<Item = &'a WhatWhereRecord>,
@@ -87,16 +91,18 @@ pub trait SearchableDB {
 
 impl UpdatableDB for WhatWhereMemDB {
     fn update(&mut self, what: &str, container: &str, current_update: &str) {
-        self.db.insert(what.to_string(), ThingProperties::new(container.to_string(), current_update.to_string()));
+        self.db.insert(
+            what.to_string(),
+            ThingProperties::new(container.to_string(), current_update.to_string()),
+        );
     }
-
 }
 
 impl SearchableDB for WhatWhereMemDB {
     fn search_by_thing_code(&self, what: &str) -> Option<&str> {
         match self.db.get(what) {
-            Some(tprop) => { Some(&tprop.container) },
-                None => None,
+            Some(tprop) => Some(&tprop.container),
+            None => None,
         }
     }
 }
@@ -108,7 +114,9 @@ impl WhatWhereMemDB {
         }
     }
 
-    pub fn len(&self) -> usize { self.db.len() }
+    pub fn len(&self) -> usize {
+        self.db.len()
+    }
 
     // Adds elements from csv reader (e.g. file).
     // If elements alredy exised, they will be updated with new values
@@ -129,13 +137,13 @@ impl WhatWhereMemDB {
     }
 
     // dumps as csv into writer
-    pub fn into_csv_from_db<W>(&self, output: W) -> Result<(), Box<dyn Error>>
+    pub fn into_csv_from_db<W>(&self, output: &mut W) -> Result<(), Box<dyn Error>>
     where
-        W: io::Write
+        W: io::Write,
     {
         let mut wrt = csv::Writer::from_writer(output);
         for (what, tprop) in &self.db {
-            let record : WhatWhereRecord = WhatWhereRecord::from_things_properties(what, tprop);
+            let record: WhatWhereRecord = WhatWhereRecord::from_things_properties(what, tprop);
             wrt.serialize(&record)?;
         }
         Ok(())
@@ -147,31 +155,28 @@ mod whatwheretests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    const CSV00IN: &str = "Container,What,LastUpdate
-c01,t01,1901-01-01 12:53
-c02,t02,\"2001-01-01 12:54\"
+    const CSV00IN: &str = "LastUpdate,Container,What
+1901-01-01 12:53,c01,t01
+\"2001-01-01 12:54\",c02,t02
 ";
 
-    const CSV00OUT: &str = "What,Container,LastUpdate
-t01,c01,1901-01-01 12:53
-t02,c02,2001-01-01 12:54
+    const CSV00OUT: &str = "Container,What,LastUpdate
+c01,t01,1901-01-01 12:53
+c02,t02,2001-01-01 12:54
 ";
 
     fn records00() -> [WhatWhereRecord; 2] {
-            [
-                WhatWhereRecord::new("t01", "c01", "1901-01-01 12:53"),
-                WhatWhereRecord::new("t02", "c02", "2001-01-01 12:54"),
-            ]
+        [
+            WhatWhereRecord::new("t01", "c01", "1901-01-01 12:53"),
+            WhatWhereRecord::new("t02", "c02", "2001-01-01 12:54"),
+        ]
     }
 
     #[test]
     fn test_load_from_csv_to_vec_00() -> Result<(), Box<dyn Error>> {
         let mut buff = io::Cursor::new(CSV00IN);
         let v = load_from_csv_to_vec(buff)?;
-        assert_eq!(
-            &v,
-            &records00()
-        );
+        assert_eq!(&v, &records00());
         Ok(())
     }
 
@@ -181,7 +186,7 @@ t02,c02,2001-01-01 12:54
         let records = records00();
         save_to_csv_from_vec(&mut output_as_bytes, records.iter())?;
         let output_string = String::from_utf8(output_as_bytes).expect("Not UTF-8");
-        assert_eq!( output_string, CSV00OUT);
+        assert_eq!(output_string, CSV00OUT);
         Ok(())
     }
 
