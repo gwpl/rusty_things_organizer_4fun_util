@@ -1,7 +1,13 @@
 
-`rusty_things_organizer_4fun_util`
+# `rusty_things_organizer_4fun_util`
 
 Tool made for fun to play with rust libraries and to organize some things using barcode reader :).
+
+Repos:
+
+* [`https://gitlab.com/gwpl/rusty_things_organizer_4fun_util`](https://gitlab.com/gwpl/rusty_things_organizer_4fun_util)
+* [`https://github.com/gwpl/rusty_things_organizer_4fun_util`](https://github.com/gwpl/rusty_things_organizer_4fun_util)
+
 
 ```
 Usage: things [b|s]
