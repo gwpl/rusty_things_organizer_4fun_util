@@ -12,7 +12,7 @@ use std::vec::Vec;
 pub struct WhatWhereRecord {
     pub container: String, // because "where" is reserved keyword and previxing r# may suck
     pub what: String,
-    pub last_update: String, // iso-8601 string
+    pub last_update: String, // iso-8601 string //TODO: make custom type Iso8601String with TryFrom,Into,AsRef,custom serde visitor and serialize impl
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]

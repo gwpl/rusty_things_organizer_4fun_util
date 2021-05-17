@@ -27,6 +27,7 @@ each line specify code of thing to search.
     );
 }
 
+//TODO: refactor argument parsing to use impl IntoIterator<Item=AsRef<str>> and return custom struct
 pub fn parse_mode_command(cmd: &str) -> ModeCommands {
     use ModeCommands::*;
     match cmd.as_ref() {
