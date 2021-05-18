@@ -8,12 +8,13 @@ pub enum ModeCommands {
     SearchMode,
     //ContentsMode, //TODO
     ForestMode,
+    HelpMode,
     UnknownMode,
 }
 
-pub fn display_help(args: &[String]) {
+pub fn display_help<W: io::Write>(args: &[String], mut output: &mut W) {
     let cmd: &str = if args.len() >= 1 { &args[0] } else { "command" };
-    eprintln!(
+    writeln!(&mut output,
         "Usage:
 {0} b # to enter batch mode
 {0} s # to search for things
@@ -34,7 +35,7 @@ forest of
  └─ Trees
 ",
         cmd
-    );
+    ).expect("unable to write to output");
 }
 
 //TODO: refactor argument parsing to use impl IntoIterator<Item=AsRef<str>> and return custom struct
@@ -44,6 +45,8 @@ pub fn parse_mode_command(cmd: &str) -> ModeCommands {
         "b" => BatchMode,
         "s" => SearchMode,
         // "c" => ContentsMode,
+        "-h" => HelpMode,
+        "--help" => HelpMode,
         "f" => ForestMode,
         _ => UnknownMode,
     }
@@ -75,6 +78,7 @@ where
         BatchMode => process_batch(&args, db, input, output),
         SearchMode => process_search(&args, db, input, output),
         ForestMode => process_forest_dump(&args, db, input, output),
+        HelpMode => {display_help(&args, &mut io::stderr()); Ok(())},
         UnknownMode => Err("Unknown command".into()),
     }
 }

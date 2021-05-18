@@ -41,7 +41,7 @@ where
 {
     //use std::io::Seek;
     if args.len() < 2 {
-        cli::display_help(&args);
+        cli::display_help(&args, &mut io::stderr());
         return Ok(());
     }
     let mut memdb = WhatWhereMemDB::new();
