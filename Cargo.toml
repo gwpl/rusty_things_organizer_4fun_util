@@ -11,6 +11,7 @@ csv = "1.1"
 text_io = "0.1"
 serde = { version = "1", features = ["derive"] }
 prettytable-rs = "^0.8"
+ascii_tree = "^0.1"
 
 [dev-dependencies]
 pretty_assertions = "^0.7"
