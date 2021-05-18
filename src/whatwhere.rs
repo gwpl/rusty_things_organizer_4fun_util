@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
 use std::vec::Vec;
+use crate::things_tree::{ThingsTree,IntoAsciiTree};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -34,6 +35,7 @@ impl ThingProperties {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct WhatWhereMemDB {
     db: BTreeMap<String, ThingProperties>, // key is what , value is "where" == "container"
+    tree: ThingsTree, // to keep track of tree structure for ascii_tree rendering (TODO make it as feature "ascii_tree")
 }
 
 impl WhatWhereRecord {
@@ -95,6 +97,7 @@ impl UpdatableDB for WhatWhereMemDB {
             what.to_string(),
             ThingProperties::new(container.to_string(), current_update.to_string()),
         );
+        self.tree.insert(container, what);
     }
 }
 
@@ -107,10 +110,20 @@ impl SearchableDB for WhatWhereMemDB {
     }
 }
 
+impl IntoAsciiTree for WhatWhereMemDB {
+    fn into_ascii_tree(&self, root: &str) -> ascii_tree::Tree {
+        self.tree.into_ascii_tree(root)
+    }
+    fn into_ascii_forest(&self) -> String {
+        self.tree.to_string()
+    }
+}
+
 impl WhatWhereMemDB {
     pub fn new() -> WhatWhereMemDB {
         WhatWhereMemDB {
             db: BTreeMap::new(),
+            tree: ThingsTree::new(),
         }
     }
 
@@ -128,10 +141,7 @@ impl WhatWhereMemDB {
         let mut rdr = csv::Reader::from_reader(input);
         for result in rdr.deserialize() {
             let record: WhatWhereRecord = result?;
-            self.db.insert(
-                record.what,
-                ThingProperties::new(record.container, record.last_update),
-            );
+            self.update(&record.container, &record.what, &record.last_update);
         }
         Ok(())
     }
@@ -198,6 +208,54 @@ c02,t02,2001-01-01 12:54
         assert_eq!(db.search_by_thing_code("t01"), Some("c01"));
         assert_eq!(db.search_by_thing_code("t02"), Some("c02"));
         assert_eq!(db.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_from_csv_to_ascii_tree_forest_string_00() -> Result<(), Box<dyn Error>> {
+        let mut db = WhatWhereMemDB::new();
+        let mut buff = io::Cursor::new(CSV00IN);
+        db.add_from_csv(buff)?;
+        let forest_string = db.tree.to_string();
+        assert_eq!(
+forest_string.trim(),
+"
+c01
+ └─ t01
+ c02
+ └─ t02
+".trim()
+);
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_ascii_tree_forest_string_00() -> Result<(), Box<dyn Error>> {
+        let mut db = WhatWhereMemDB::new();
+        db.update("box_ABC", "thing_A","TODO");
+        db.update("box_ABC", "thing_B","TODO");
+        db.update("box_ABC", "thing_C","TODO");
+        db.update("storage","box_ABC", "TODO");
+        db.update("storage", "box_X", "TODO");
+        db.update("box_X", "thing_Y","TODO");
+        db.update("box_X", "thing_Z","TODO");
+        db.update("box_W", "thing_V","TODO");
+        let forest_string = db.tree.to_string();
+        assert_eq!(
+forest_string.trim(),
+"
+ box_W
+ └─ thing_V
+ storage
+ ├─ box_ABC
+ │  ├─ thing_A
+ │  ├─ thing_B
+ │  └─ thing_C
+ └─ box_X
+    ├─ thing_Y
+    └─ thing_Z
+".trim()
+);
         Ok(())
     }
 

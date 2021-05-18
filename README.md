@@ -10,7 +10,7 @@ Repos:
 
 
 ```
-Usage: things [b|s]
+Usage: things [b|s|f]
 
 Tool helps to organize where things are, using barcode reader.
 
@@ -56,6 +56,19 @@ Output:
 container00
 container10
 cabinet_container_000
+
+# Ascii Art Forest Mode! Dump all your storage in forest mode
+$ things f
+ box_W
+ └─ thing_V
+ storage
+ ├─ box_ABC
+ │  ├─ thing_A
+ │  ├─ thing_B
+ │  └─ thing_C
+ └─ box_X
+    ├─ thing_Y
+    └─ thing_Z
 ...
 
 ```

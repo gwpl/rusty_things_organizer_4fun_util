@@ -1,3 +1,4 @@
+use crate::things_tree::IntoAsciiTree;
 use crate::whatwhere::{SearchableDB, UpdatableDB};
 use std::io;
 use std::{error::Error, io::BufRead};
@@ -6,6 +7,7 @@ pub enum ModeCommands {
     BatchMode,
     SearchMode,
     //ContentsMode, //TODO
+    ForestMode,
     UnknownMode,
 }
 
@@ -15,6 +17,7 @@ pub fn display_help(args: &[String]) {
         "Usage:
 {0} b # to enter batch mode
 {0} s # to search for things
+{0} f # to dump forest of all containers and things
 
 Batch mode:
 Provide container code folowed by codes of things to assign to it (in separate lines).
@@ -22,6 +25,13 @@ To enter new container, provide one or more empty lines.
 
 Search mode:
 each line specify code of thing to search.
+
+Forest mode:
+Will dump whole inventory in form of 
+forest of
+ ├─ Ascii
+ ├─ Art
+ └─ Trees
 ",
         cmd
     );
@@ -34,6 +44,7 @@ pub fn parse_mode_command(cmd: &str) -> ModeCommands {
         "b" => BatchMode,
         "s" => SearchMode,
         // "c" => ContentsMode,
+        "f" => ForestMode,
         _ => UnknownMode,
     }
     //if cmd == "b" {
@@ -54,7 +65,7 @@ pub fn parse_and_execute_updates<DB, R, W>(
 where
     R: io::Read,
     W: io::Write,
-    DB: UpdatableDB + SearchableDB,
+    DB: UpdatableDB + SearchableDB + IntoAsciiTree,
 {
     use ModeCommands::*;
     if args.len() < 2 {
@@ -63,6 +74,7 @@ where
     match parse_mode_command(&args[1]) {
         BatchMode => process_batch(&args, db, input, output),
         SearchMode => process_search(&args, db, input, output),
+        ForestMode => process_forest_dump(&args, db, input, output),
         UnknownMode => Err("Unknown command".into()),
     }
 }
@@ -133,6 +145,21 @@ where
             None => writeln!(&mut output, "Error: Not found!"),
         };
     }
+    Ok(())
+}
+
+fn process_forest_dump<IAT, R, W>(
+    _args: &[String],
+    db: &mut IAT,
+    _input: R,
+    mut output: &mut W,
+) -> Result<(), Box<dyn Error>>
+where
+    R: io::Read,
+    W: io::Write,
+    IAT: IntoAsciiTree,
+{
+    writeln!(&mut output, "{}", db.into_ascii_forest()).expect("Couldn't write to output");
     Ok(())
 }
 
@@ -217,6 +244,45 @@ Error: Not found!
 container03
 ";
         assert_eq!(String::from_utf8(output)?, output_expected);
+        Ok(())
+    }
+
+    #[test]
+    fn cli_forest_mode_00() -> Result<(), Box<dyn Error>> {
+        let input = "thing01
+thing02
+thingABC
+
+thing03
+";
+        //let args: Vec<String> = vec!["rustythings_foo_bar.bin".to_string(), "b".to_string()];
+        let args: Vec<String> = ["rustythings_foo_bar.bin", "f"]
+            .iter()
+            .map(|x| x.to_string())
+            .collect();
+        let mut memdb = WhatWhereMemDB::new();
+        let mut output: Vec<_> = Vec::new();
+        let cursor_input = io::Cursor::new(input);
+        memdb.update("container01", "thing01", "TimestampX");
+        memdb.update("container01", "thing02", "TimestampX");
+        memdb.update("container02", "box02A", "TimestampX");
+        memdb.update("container02", "box02B", "TimestampX");
+        memdb.update("box02A", "thing03", "TimestampX");
+        memdb.update("box02A", "thing04", "TimestampX");
+        memdb.update("box02B", "thing05", "TimestampX");
+        parse_and_execute_updates(&args, &mut memdb, cursor_input, &mut output)?;
+        let output_expected = "
+ container01
+ ├─ thing01
+ └─ thing02
+ container02
+ ├─ box02A
+ │  ├─ thing03
+ │  └─ thing04
+ └─ box02B
+    └─ thing05
+";
+        assert_eq!(String::from_utf8(output)?.trim(), output_expected.trim());
         Ok(())
     }
 }
