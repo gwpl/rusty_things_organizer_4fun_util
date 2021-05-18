@@ -101,7 +101,7 @@ where
         } else {
             let thing = line;
             eprintln!("Thing `{}` assined to container `{}`", thing, container);
-            db.update(&thing, &container, current_update);
+            db.update(&container, &thing, current_update);
         }
     }
     Ok(())
@@ -207,9 +207,9 @@ thing03
         let mut memdb = WhatWhereMemDB::new();
         let mut output: Vec<_> = Vec::new();
         let cursor_input = io::Cursor::new(input);
-        memdb.update("thing01", "container01", "TimestampX");
-        memdb.update("thing02", "container02", "TimestampX");
-        memdb.update("thing03", "container03", "TimestampX");
+        memdb.update("container01", "thing01", "TimestampX");
+        memdb.update("container02", "thing02", "TimestampX");
+        memdb.update("container03", "thing03", "TimestampX");
         parse_and_execute_updates(&args, &mut memdb, cursor_input, &mut output)?;
         let output_expected = "container01
 container02

@@ -82,7 +82,7 @@ where
 }
 
 pub trait UpdatableDB {
-    fn update(&mut self, what: &str, container: &str, current_update: &str);
+    fn update(&mut self, container: &str, what: &str, current_update: &str);
 }
 
 pub trait SearchableDB {
@@ -90,7 +90,7 @@ pub trait SearchableDB {
 }
 
 impl UpdatableDB for WhatWhereMemDB {
-    fn update(&mut self, what: &str, container: &str, current_update: &str) {
+    fn update(&mut self, container: &str, what: &str, current_update: &str) {
         self.db.insert(
             what.to_string(),
             ThingProperties::new(container.to_string(), current_update.to_string()),
@@ -206,7 +206,7 @@ c02,t02,2001-01-01 12:54
         let mut output_as_bytes: Vec<u8> = Vec::new();
         let mut db = WhatWhereMemDB::new();
         for r in &records00() {
-            db.update(&r.what, &r.container, &r.last_update);
+            db.update(&r.container, &r.what, &r.last_update);
         }
         db.into_csv_from_db(&mut output_as_bytes)?;
         let output_string = String::from_utf8(output_as_bytes)?;
