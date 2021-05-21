@@ -4,9 +4,9 @@ use std::{fs, io};
 
 use whatwhere::WhatWhereMemDB;
 
-mod cli;
-mod whatwhere;
-mod things_tree;
+pub mod cli;
+pub mod whatwhere;
+pub mod things_tree;
 
 pub fn run_with_path_to_csv<R, W, P>(
     args: &[String],
