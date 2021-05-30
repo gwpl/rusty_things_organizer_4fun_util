@@ -377,6 +377,7 @@ dependencies = [
 name = "rusty_things_organizer_4fun_util"
 version = "0.1.0"
 dependencies = [
+ "ansi_term",
  "ascii_tree",
  "csv",
  "pretty_assertions",
